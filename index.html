@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Expense Tracker</title>
+    <style>
+        /* --- CSS: The "Friendly" Look --- */
+        :root {
+            --primary: #2ecc71;
+            --secondary: #3498db;
+            --dark: #2c3e50;
+            --light: #f4f7f6;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--light);
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+            color: var(--dark);
+        }
+
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 450px;
+        }
+
+        h1 { text-align: center; margin-bottom: 1rem; }
+
+        .balance-card {
+            background: var(--primary);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        input, select, button {
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            outline: none;
+        }
+
+        button.add-btn {
+            background: var(--secondary);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        button.add-btn:hover { background: #2980b9; }
+
+        .actions {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+
+        .export-btn {
+            background: none;
+            border: 1px solid var(--secondary);
+            color: var(--secondary);
+            cursor: pointer;
+            font-size: 13px;
+            padding: 5px 10px;
+        }
+
+        ul { list-style: none; padding: 0; margin-top: 20px; }
+
+        li {
+            background: #fff;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            border-left: 5px solid var(--secondary);
+        }
+
+        .delete-btn {
+            color: #e74c3c;
+            cursor: pointer;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>💸 My Expenses</h1>
+    
+    <div class="balance-card">
+        <small>Total Spent</small>
+        <h2 id="total-amount">₪0.00</h2>
+    </div>
+
+    <div class="input-group">
+        <input type="text" id="desc" placeholder="What did you buy?">
+        <input type="number" id="amount" placeholder="Amount (₪)">
+        <select id="category">
+            <option value="Food">Food</option>
+            <option value="Transport">Transport</option>
+            <option value="Leisure">Leisure</option>
+            <option value="Bills">Bills</option>
+            <option value="Other">Other</option>
+        </select>
+        <button class="add-btn" onclick="addExpense()">Add Expense</button>
+    </div>
+
+    <div class="actions">
+        <span>Recent History</span>
+        <button class="export-btn" onclick="exportToCSV()">Download CSV</button>
+    </div>
+
+    <ul id="expense-list"></ul>
+</div>
+
+<script>
+    /* --- JavaScript: The "Smart" Logic --- */
+    
+    // 1. Initialize data from LocalStorage or empty array
+    let expenses = JSON.parse(localStorage.getItem('user_expenses')) || [];
+
+    // 2. Function to Refresh the UI
+    function updateUI() {
+        const list = document.getElementById('expense-list');
+        const totalEl = document.getElementById('total-amount');
+        list.innerHTML = '';
+        
+        let total = 0;
+        
+        expenses.forEach((item, index) => {
+            total += parseFloat(item.amount);
+            
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <div>
+                    <strong>${item.desc}</strong><br>
+                    <small style="color: gray;">${item.category} • ${item.date}</small>
+                </div>
+                <span>
+                    ₪${parseFloat(item.amount).toFixed(2)}
+                    <span class="delete-btn" onclick="deleteExpense(${index})">✕</span>
+                </span>
+            `;
+            list.appendChild(li);
+        });
+        
+        totalEl.innerText = `₪${total.toFixed(2)}`;
+        
+        // Save to LocalStorage so data persists
+        localStorage.setItem('user_expenses', JSON.stringify(expenses));
+    }
+
+    // 3. Function to Add Expense
+    function addExpense() {
+        const desc = document.getElementById('desc').value;
+        const amount = document.getElementById('amount').value;
+        const category = document.getElementById('category').value;
+        const date = new Date().toLocaleDateString();
+
+        if (desc === '' || amount === '') {
+            alert("Please fill in both description and amount.");
+            return;
+        }
+
+        expenses.push({ desc, amount, category, date });
+        
+        // Clear inputs
+        document.getElementById('desc').value = '';
+        document.getElementById('amount').value = '';
+        
+        updateUI();
+    }
+
+    // 4. Function to Delete
+    function deleteExpense(index) {
+        expenses.splice(index, 1);
+        updateUI();
+    }
+
+    // 5. Smart Feature: Export to CSV (Great for your Python work!)
+    function exportToCSV() {
+        let csvContent = "data:text/csv;charset=utf-8,Date,Category,Description,Amount\n";
+        expenses.forEach(e => {
+            csvContent += `${e.date},${e.category},${e.desc},${e.amount}\n`;
+        });
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "my_expenses.csv");
+        document.body.appendChild(link);
+        link.click();
+    }
+
+    // Initial Load
+    updateUI();
+</script>
+
+</body>
+</html>
